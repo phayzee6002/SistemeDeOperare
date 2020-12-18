@@ -1,0 +1,117 @@
+   0 ls
+   1 create
+   2 touch file
+   3 nano file
+   4 cat file
+   5 nano file
+   6 cp
+   7 man cat
+   8 clear
+   9 echo Hello
+  10 echo echo echo
+  11 echo
+  12 echo echo
+  13 echo file
+  14 echo "int main () {}" > file
+  15 cat file
+  16 cd
+  17 cd root
+  18 ls
+  19 mv file file2
+  20 ls
+  21 mkdir files
+  22 ls
+  23 cd files
+  24 mk file.txt
+  25 ls
+  26 cd root
+  27 cd ..
+  28 cd .
+  29 rm file2
+  30 rm files
+  31 ls
+  32 rmdir files
+  33 touch first_lab
+  34 nano first_lab
+  35 cat first_lab
+  36 gcc
+  37 gcc first_lab -o first_lab
+  38 gcc first_lab -o output
+  39 cat output
+  40 ls
+  41 ls first_lab
+  42 ls
+  43 gcc first_lab -o output
+  44 ls
+  45 mv first_lab first_lab.c
+  46 gcc first_lab.c -o output
+  47 ls
+  48 cd output
+  49 strace output
+  50 ktrace output
+  51 cat output
+  52 clear
+  53 ls
+  54 cat
+  55 ls
+  56 cd output
+  57 echo output
+  58 echo output > file.txt
+  59 ls
+  60 cat file.txt
+  61 history
+  62 ls
+  63 ktrace output
+  64 ktrace CALL
+  65 ktrace CALL execve
+  66 execve
+  67 execve output
+  68 man 2
+  69 man 2 execve
+  70 ktrace(1)
+  71 cd hello
+  72 ktrace hello.c
+  73 gcc hello.c -o output.txt
+  74 ktrace output.txt
+  75 execve
+  76 execve output.txt
+  77 execve hello.c
+  78 rm first_lab.c
+  79 rm output
+  80 ls
+  81 rm output.txt
+  82 cat file.txt
+  83 ls
+  84 rm file.txt
+  85 ls
+  86 history
+  87 touch first_lab.c
+  88 nano first_lab.c
+  89 ls
+  90 gcc first_lab.c -o output
+  91 ls
+  92 ktrace ./output
+  93 strace ./output
+  94 ldd
+  95 ldd ./ output
+  96 ls
+  97 nm ./output
+  98 rm output
+  99 ls
+ 100 nano first_lab.c
+ 101 ls
+ 102 gcc first_lab.c -o output
+ 103 nano first_lab,c
+ 104 nano first_lab.c
+ 105 gcc first_lab.c -o output
+ 106 ls
+ 107 strace ./output
+ 108 nano first_lab.c
+ 109 clear
+ 110 nano first_lab.c
+ 111 gcc first_lab.c -o output
+ 112 gdb
+ 113 ls
+ 114 strace ./output
+ 118 gdb output
+ 119 history
