@@ -136,7 +136,7 @@ void encrypt(char src[], char dstPerm[], char dst[], int nrThreads)
 	strcpy(string, map_ptr);
 
 	srcDat = allocate(string);
-
+ 
 	int *wordsThreads = (int *)malloc(nrThreads * sizeof(int));
 	int i = 0;
 
