@@ -1,10 +1,10 @@
 masina
 casa
 apartament
-tamplar
-cizmar
 maimuta
 cal
 aparat 
 tren
 calculator
+tamplar
+cizmar
