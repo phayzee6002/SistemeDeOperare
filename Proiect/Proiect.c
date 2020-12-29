@@ -11,8 +11,6 @@
 #include <pthread.h>
 #include <time.h>
 
-int global = 0;
-
 struct data
 {
 	char **wordsArray;
@@ -24,25 +22,85 @@ struct data
 	int fd_dstPerm;
 };
 
+struct output
+{
+	int **permutations;
+	char **encryptedArray;
+};
+
+struct word
+{
+	int *scrambledArray;
+	char *encryptedWord;
+};
+
+void randomisation(char *word)
+{
+	int *arr  = (int *)malloc(strlen(word) * sizeof(int)),
+		*freq = (int *)calloc(strlen(word),  sizeof(int));
+	int i = 0, num;
+	
+	srand(time(NULL));										
+
+	while (i != strlen(word))
+	{
+		num = (rand() % (strlen(word)));
+
+		while (freq[num] == 1)
+		{
+			num = (rand() % (strlen(word)));
+		}
+
+		arr[i] = num;
+		freq[num] = 1;
+		i += 1;
+	}
+
+	char wordCpy[strlen(word)];
+	strcpy(wordCpy, word);
+
+	for (int i = 0; i < strlen(word); i++)
+	{
+		wordCpy[i] = word[arr[i]];
+	}
+	puts(wordCpy);
+}
+
 void *permutation(void *srcDat)
 {
 	struct data *threadDat = (struct data *)srcDat;
 
 	for (int i = threadDat->inf; i < threadDat->supr; i++)
 	{
-		char* cpy = (threadDat->wordsArray[i]);
-		char cp[strlen(threadDat->wordsArray[i])];
-		strcpy(cp, cpy);
+		char *word = (threadDat->wordsArray[i]);
 
-		printf("%s ", cp[0]);
+		randomisation(word);
 	}
 
 	return NULL;
 }
 
-struct data allocate(char string[])
+int* threadDivider(int wordsCount, int nrThreads)
 {
-	int wordsCount = 0, init_sz = strlen(string), counter = 0;
+	int *wordsThreads = (int *)malloc(nrThreads * sizeof(int));
+	int i = 0;
+
+	for (; i < wordsCount % nrThreads; i++)
+	{
+		wordsThreads[i] = wordsCount / nrThreads + 1;
+	}
+
+	for (; i < nrThreads; i++)
+	{
+		wordsThreads[i] = wordsCount / nrThreads;
+	}
+
+	return wordsThreads;
+}
+
+struct data srcDat_allocate(char string[])
+{
+	int wordsCount = 0, counter = 0;
 	char delim[] = "\n";
 	char **wordsArray;
 	struct data srcDat;
@@ -107,50 +165,48 @@ const char *mapping(int fd_src, int sz)
 	{
 		perror(NULL);
 		shm_unlink(map_name);
-		return errno;
+		printf("Eroare maapare fisier");
 	}
 
 	return (map_ptr);
 }
 
-void encrypt(char src[], char dstPerm[], char dst[], int nrThreads)
+int encrypt(char src[], char dstPerm[], char dst[], int nrThreads)
 {
-	struct stat src_struct, dst_struct, dstPerm_struct;
+	struct stat src_struct,
+				dst_struct,
+				dstPerm_struct;
 	struct data srcDat;
-	int fd_src, fd_dst, fd_dstPerm;
+	
+	int fd_src, 
+		fd_dst, 
+		fd_dstPerm;
+	int *wordsThreads = (int *)malloc(nrThreads * sizeof(int));
 
-	const char *map_ptr;
 	pthread_t threadID;
 
-	fd_src = openSrc(src);
-	fd_dst = createDst(dst);
+
+	// Getting the file descriptor for the necessary files
+	fd_src     = openSrc  (src);
+	fd_dst     = createDst(dst);
 	fd_dstPerm = createDst(dstPerm);
 
-	stat(src, &src_struct);
-	stat(dst, &dst_struct);
+	// Initialising the structs containing file data
+	stat(src	, &src_struct);
+	stat(dst	, &dst_struct);
 	stat(dstPerm, &dstPerm_struct);
 
-	map_ptr = mapping(fd_src, src_struct.st_size);
+	// Copying the source file content into rawDat 
+	char 		rawDat[src_struct.st_size];
+	const char* map_ptr = mapping(fd_src, src_struct.st_size);
+	strcpy(rawDat, map_ptr);
 
-	char string[src_struct.st_size];
-	strcpy(string, map_ptr);
+	// Formatting the rawDat string
+	srcDat 		 = srcDat_allocate(rawDat);
+	wordsThreads = threadDivider  (srcDat.wordsCount, nrThreads);
 
-	srcDat = allocate(string);
- 
-	int *wordsThreads = (int *)malloc(nrThreads * sizeof(int));
-	int i = 0;
-
-	for (; i < srcDat.wordsCount % nrThreads; i++)
-	{
-		wordsThreads[i] = srcDat.wordsCount / nrThreads + 1;
-	}
-
-	for (; i < nrThreads; i++)
-	{
-		wordsThreads[i] = srcDat.wordsCount / nrThreads;
-	}
-
-	srcDat.inf = 0;
+	// Creating threads
+	srcDat.inf  = 0;
 	srcDat.supr = wordsThreads[0];
 
 	for (int i = 0; i < nrThreads; i++)
@@ -168,8 +224,10 @@ void encrypt(char src[], char dstPerm[], char dst[], int nrThreads)
 		}
 
 		srcDat.inf = srcDat.supr;
-		srcDat.supr = srcDat.inf + wordsThreads[i+1];
+		srcDat.supr = srcDat.inf + wordsThreads[i + 1];
 	}
+
+	return 1;
 }
 
 int main(int argc, char *argv[])

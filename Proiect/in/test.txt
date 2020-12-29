@@ -3,7 +3,7 @@ casa
 apartament
 maimuta
 cal
-aparat 
+aparat
 tren
 calculator
 tamplar
