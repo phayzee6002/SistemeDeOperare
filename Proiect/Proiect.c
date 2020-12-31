@@ -34,10 +34,16 @@ struct word
 	char *encryptedWord;
 };
 
+
+/**
+ * @brief Encrypts the word
+ * 
+ * @param word holds the word which need to be encrypted
+ */
 void randomisation(char *word)
 {
-	int *arr  = (int *)malloc(strlen(word) * sizeof(int)),
-		*freq = (int *)calloc(strlen(word),  sizeof(int));
+	int *wordKey  = (int *)malloc(strlen(word) * sizeof(int)),
+		*tmpFreq = (int *)calloc(strlen(word),  sizeof(int));
 	int i = 0, num;
 	
 	srand(time(NULL));										
@@ -46,13 +52,13 @@ void randomisation(char *word)
 	{
 		num = (rand() % (strlen(word)));
 
-		while (freq[num] == 1)
+		while (tmpFreq[num] == 1)
 		{
 			num = (rand() % (strlen(word)));
 		}
 
-		arr[i] = num;
-		freq[num] = 1;
+		wordKey[i] = num;
+		tmpFreq[num] = 1;
 		i += 1;
 	}
 
@@ -61,11 +67,18 @@ void randomisation(char *word)
 
 	for (int i = 0; i < strlen(word); i++)
 	{
-		wordCpy[i] = word[arr[i]];
+		wordCpy[i] = word[wordKey[i]];
 	}
 	puts(wordCpy);
 }
 
+
+/**
+ * @brief Pass data to be encrypted
+ * 
+ * @param srcDat is a structure containing information about the data
+ * @return void* 
+ */
 void *permutation(void *srcDat)
 {
 	struct data *threadDat = (struct data *)srcDat;
@@ -80,6 +93,14 @@ void *permutation(void *srcDat)
 	return NULL;
 }
 
+
+/**
+ * @brief Divides the number of words to the number of threads
+ * 
+ * @param wordsCount holds the number of words
+ * @param nrThreads  holds the number of threads
+ * @return int* which holds the number of words to be encrypted by each thread
+ */
 int* threadDivider(int wordsCount, int nrThreads)
 {
 	int *wordsThreads = (int *)malloc(nrThreads * sizeof(int));
@@ -98,16 +119,23 @@ int* threadDivider(int wordsCount, int nrThreads)
 	return wordsThreads;
 }
 
-struct data srcDat_allocate(char string[])
+
+/**
+ * @brief Formats the data to be encrypted into array of strings
+ * 
+ * @param rawDat holds the source data from the file
+ * @return struct data which contains the formatted data and the number of 		*	 	  words 
+ */
+struct data srcDat_allocate(char rawDat[])
 {
 	int wordsCount = 0, counter = 0;
 	char delim[] = "\n";
 	char **wordsArray;
 	struct data srcDat;
 
-	for (int i = 0; i < strlen(string); i++)
+	for (int i = 0; i < strlen(rawDat); i++)
 	{
-		if (string[i] == '\n')
+		if (rawDat[i] == '\n')
 		{
 			wordsCount += 1;
 		}
@@ -116,7 +144,7 @@ struct data srcDat_allocate(char string[])
 	wordsCount += 1;
 	wordsArray = (char **)malloc(wordsCount * sizeof(char *));
 
-	char *ptr = strtok(string, delim);
+	char *ptr = strtok(rawDat, delim);
 	while (ptr != NULL)
 	{
 		wordsArray[counter] = ptr;
@@ -130,6 +158,13 @@ struct data srcDat_allocate(char string[])
 	return srcDat;
 }
 
+
+/**
+ * @brief Opens the source file src
+ * 
+ * @param src holds the name of the file to be opened
+ * @return file descriptor if successful, errno if unsuccessful
+ */
 int openSrc(char src[])
 {
 	int fd_src = open(src, O_RDWR, S_IRWXU);
@@ -142,6 +177,13 @@ int openSrc(char src[])
 	return fd_src;
 }
 
+
+/**
+ * @brief Opens the destination file dst, or creates it if it's non-existent
+ * 
+ * @param dst holds the name of the file to be opened/ created
+ * @return file descriptor if successful, errno if unsuccessful
+ */
 int createDst(char dst[])
 {
 	int fd_dst = open(dst, O_RDWR | O_CREAT, S_IRWXU);
@@ -154,6 +196,14 @@ int createDst(char dst[])
 	return fd_dst;
 }
 
+
+/**
+ * @brief Writes the content of the file into memory
+ * 
+ * @param fd_src holds the file descriptor of the source file
+ * @param sz holds the size of the source file
+ * @return the mapped content of the source file
+ */
 const char *mapping(int fd_src, int sz)
 {
 	const char map_name[] = "proiect_shm";
@@ -171,6 +221,15 @@ const char *mapping(int fd_src, int sz)
 	return (map_ptr);
 }
 
+
+/**
+ * @brief Starts the encryption process
+ * 
+ * @param src hold the name of the source file
+ * @param dstPerm holds the name of the permutations file
+ * @param dst holds the name of the encrypted file
+ * @param nrThreads holds the number of threads to be created 
+ */
 int encrypt(char src[], char dstPerm[], char dst[], int nrThreads)
 {
 	struct stat src_struct,
@@ -229,6 +288,7 @@ int encrypt(char src[], char dstPerm[], char dst[], int nrThreads)
 
 	return 1;
 }
+
 
 int main(int argc, char *argv[])
 {
