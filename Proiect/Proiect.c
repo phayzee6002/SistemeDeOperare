@@ -1,3 +1,14 @@
+/**
+ * @file 	Proiect.c
+ * @author 	Leonard Vlaicu
+ * @brief 	Program for encryption/ decryption using pseudo-random numbers
+ * @version 0.1
+ * @date 2021-01-15
+ * 
+ * @copyright Copyright (c) 2021
+ * 
+ */
+
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -10,7 +21,12 @@
 #include <sys/wait.h>
 #include <pthread.h>
 #include <time.h>
+#include <stdbool.h>
 
+/**
+ * @brief Struct for holding info about file data
+ * 
+ */
 struct data
 {
 	char **wordsArray;
@@ -22,86 +38,134 @@ struct data
 	int fd_dstPerm;
 };
 
-struct output
-{
-	int **permutations;
-	char **encryptedArray;
-};
-
-struct word
-{
-	int *scrambledArray;
-	char *encryptedWord;
-};
-
-
 /**
- * @brief Encrypts the word
+ * @brief Struct for holding info about decryption data
  * 
- * @param word holds the word which need to be encrypted
  */
-void randomisation(char *word)
+struct decrypt
 {
-	int *wordKey  = (int *)malloc(strlen(word) * sizeof(int)),
-		*tmpFreq = (int *)calloc(strlen(word),  sizeof(int));
-	int i = 0, num;
-	
-	srand(time(NULL));										
-
-	while (i != strlen(word))
-	{
-		num = (rand() % (strlen(word)));
-
-		while (tmpFreq[num] == 1)
-		{
-			num = (rand() % (strlen(word)));
-		}
-
-		wordKey[i] = num;
-		tmpFreq[num] = 1;
-		i += 1;
-	}
-
-	char wordCpy[strlen(word)];
-	strcpy(wordCpy, word);
-
-	for (int i = 0; i < strlen(word); i++)
-	{
-		wordCpy[i] = word[wordKey[i]];
-	}
-	puts(wordCpy);
-}
-
+	struct data srcDat;
+	struct data srcPermDat;
+};
 
 /**
- * @brief Pass data to be encrypted
+ * @brief Struct for holding info about encryption data
  * 
- * @param srcDat is a structure containing information about the data
+ */
+struct encrypt
+{
+	struct data srcDat;
+};
+
+/**
+ * @brief Generates the pseudo-random permutation for each word in the file
+ * 
+ * @param srcDat holds the information about the source file
  * @return void* 
  */
 void *permutation(void *srcDat)
 {
-	struct data *threadDat = (struct data *)srcDat;
+	struct encrypt *threadDat = (struct encrypt *)srcDat;
 
-	for (int i = threadDat->inf; i < threadDat->supr; i++)
+	// Iterating through every word from the thread
+	for (int i = threadDat->srcDat.inf; i < threadDat->srcDat.supr; i++)
 	{
-		char *word = (threadDat->wordsArray[i]);
+		char *word = (threadDat->srcDat.wordsArray[i]);
+		char wordCpy[strlen(word)];
+		strcpy(wordCpy, word);
 
-		randomisation(word);
+		// wordKey is the key for a word decryption
+		// tmpFreq is a temporary buffer
+		int *wordKey = (int *)malloc(strlen(word) * sizeof(int)),
+			*tmpFreq = (int *)calloc(strlen(word), sizeof(int));
+		int i = 0, num;
+
+		srand(time(NULL));
+
+		// Generating a random sequence of integers from 0-strlen(word)
+		while (i != strlen(word))
+		{
+			num = (rand() % (strlen(word)));
+
+			while (tmpFreq[num] == 1)
+			{
+				num = (rand() % (strlen(word)));
+			}
+
+			wordKey[i] = num;
+			tmpFreq[num] = 1;
+			i += 1;
+		}
+
+		//Encrypting the word
+		for (int i = 0; i < strlen(word); i++)
+		{
+			wordCpy[i] = word[wordKey[i]];
+		}
+
+		printf("%s ", wordCpy);
+		for (int i = 0; i < strlen(word); i++)
+		{
+			printf("%d ", wordKey[i]);
+		}
+		printf(" \n");
 	}
-
-	return NULL;
 }
 
+/**
+ * @brief Decryps the words using the generated permutations
+ * 
+ * @param decryptDat Holds information about the source files
+ * @return void* 
+ */
+void *unlock(void *decryptDat)
+{
+	struct decrypt *threadDat = (struct decrypt *)decryptDat;
+
+	for (int i = threadDat->srcDat.inf; i < threadDat->srcDat.supr; i++)
+	{
+		int k = 0;
+		char *permDat = threadDat->srcPermDat.wordsArray[i];
+		char *word 	  = threadDat->srcDat.wordsArray[i];
+		char wordCpy[strlen(threadDat->srcDat.wordsArray[i])];
+		strcpy(wordCpy, word);
+		char *pch;
+		char **Array;
+		pch = strtok(permDat, " ");
+		while (pch != NULL)
+		{
+			Array[k] = pch;
+			pch = strtok(NULL, " ");
+			puts(Array[k]);
+			k += 1;
+		}
+
+		for (int j = 0; j < strlen(wordCpy); j++)
+		{
+			for (int k = 0; k < strlen(wordCpy); k++)
+			{
+				if (atoi(Array[k]) == j)
+				{
+					wordCpy[atoi(Array[k])] = word[k];
+				}
+			}
+		}
+		puts(wordCpy);
+		puts("\n");
+	}
+}
+/*
+	!word = "cihr"  si Array= ['2' '1' '3' '0'] si newWord = [r i c h]
+*/
 
 /**
- * @brief Divides the number of words to the number of threads
+ * @brief Divides the number of words to the number of threads accordingly
  * 
  * @param wordsCount holds the number of words
- * @param nrThreads  holds the number of threads
- * @return int* which holds the number of words to be encrypted by each thread
+ * @param nrThreads hold the number of threads
+ * @return int* which contains the array with the number of words per thread
  */
-int* threadDivider(int wordsCount, int nrThreads)
+int *threadDivider(int wordsCount, int nrThreads)
 {
 	int *wordsThreads = (int *)malloc(nrThreads * sizeof(int));
 	int i = 0;
@@ -119,14 +183,13 @@ int* threadDivider(int wordsCount, int nrThreads)
 	return wordsThreads;
 }
 
-
 /**
- * @brief Formats the data to be encrypted into array of strings
+ * @brief formats the source data into separate words
  * 
- * @param rawDat holds the source data from the file
- * @return struct data which contains the formatted data and the number of 		*	 	  words 
+ * @param rawDat holds the raw Data from the source file
+ * @return struct data which holds the number of words and the words
  */
-struct data srcDat_allocate(char rawDat[])
+struct data allocateDat(char rawDat[])
 {
 	int wordsCount = 0, counter = 0;
 	char delim[] = "\n";
@@ -158,12 +221,11 @@ struct data srcDat_allocate(char rawDat[])
 	return srcDat;
 }
 
-
 /**
- * @brief Opens the source file src
+ * @brief opens source file
  * 
- * @param src holds the name of the file to be opened
- * @return file descriptor if successful, errno if unsuccessful
+ * @param src holds the PATH to the source file
+ * @return int which holds the file_descriptor
  */
 int openSrc(char src[])
 {
@@ -171,18 +233,17 @@ int openSrc(char src[])
 	if (fd_src == -1)
 	{
 		perror("Eroare deschidere fisier sursa");
-		return errno;
+		exit(0);
 	}
 
 	return fd_src;
 }
 
-
 /**
- * @brief Opens the destination file dst, or creates it if it's non-existent
+ * @brief opens/ creates destination file
  * 
- * @param dst holds the name of the file to be opened/ created
- * @return file descriptor if successful, errno if unsuccessful
+ * @param dst hold the PATH to the file to be opened
+ * @return int which holds the file_descriptor
  */
 int createDst(char dst[])
 {
@@ -190,19 +251,18 @@ int createDst(char dst[])
 	if (fd_dst == -1)
 	{
 		perror("Eroare creare/ deschidere destinatie");
-		return errno;
+		exit(0);
 	}
 
 	return fd_dst;
 }
 
-
 /**
- * @brief Writes the content of the file into memory
+ * @brief maps the source file into memory for faster I/O operations
  * 
- * @param fd_src holds the file descriptor of the source file
- * @param sz holds the size of the source file
- * @return the mapped content of the source file
+ * @param fd_src holds the file_descriptor of the source file
+ * @param sz holds the size of the file to be mapped
+ * @return const char* which holds the mapped content of the file
  */
 const char *mapping(int fd_src, int sz)
 {
@@ -215,84 +275,151 @@ const char *mapping(int fd_src, int sz)
 	{
 		perror(NULL);
 		shm_unlink(map_name);
-		printf("Eroare maapare fisier");
+		fprintf(stderr, "Eroare mapare fisier");
+
+		exit(0);
 	}
 
 	return (map_ptr);
 }
 
-
-/**
- * @brief Starts the encryption process
- * 
- * @param src hold the name of the source file
- * @param dstPerm holds the name of the permutations file
- * @param dst holds the name of the encrypted file
- * @param nrThreads holds the number of threads to be created 
- */
 int encrypt(char src[], char dstPerm[], char dst[], int nrThreads)
 {
 	struct stat src_struct,
 				dst_struct,
 				dstPerm_struct;
 	struct data srcDat;
-	
-	int fd_src, 
-		fd_dst, 
+	struct encrypt encryptDat;
+
+	int fd_src,
+		fd_dst,
 		fd_dstPerm;
 	int *wordsThreads = (int *)malloc(nrThreads * sizeof(int));
 
 	pthread_t threadID;
 
-
 	// Getting the file descriptor for the necessary files
-	fd_src     = openSrc  (src);
-	fd_dst     = createDst(dst);
-	fd_dstPerm = createDst(dstPerm);
+	fd_src = openSrc(src);
 
 	// Initialising the structs containing file data
 	stat(src	, &src_struct);
 	stat(dst	, &dst_struct);
 	stat(dstPerm, &dstPerm_struct);
 
-	// Copying the source file content into rawDat 
-	char 		rawDat[src_struct.st_size];
-	const char* map_ptr = mapping(fd_src, src_struct.st_size);
+	// Copying the source file content into rawDat
+	char rawDat[src_struct.st_size];
+	const char *map_ptr = mapping(fd_src, src_struct.st_size);
+
 	strcpy(rawDat, map_ptr);
 
 	// Formatting the rawDat string
-	srcDat 		 = srcDat_allocate(rawDat);
-	wordsThreads = threadDivider  (srcDat.wordsCount, nrThreads);
+	srcDat			= allocateDat(rawDat);
+	wordsThreads	= threadDivider(srcDat.wordsCount, nrThreads);
 
-	// Creating threads
-	srcDat.inf  = 0;
-	srcDat.supr = wordsThreads[0];
+	encryptDat.srcDat		= srcDat;
+	encryptDat.srcDat.inf	= 0;
+	encryptDat.srcDat.supr	= wordsThreads[0];
 
 	for (int i = 0; i < nrThreads; i++)
 	{
-		if (pthread_create(&threadID, NULL, permutation, &srcDat))
-		{
-			perror(NULL);
-			return errno;
-		}
+		pthread_create	(&threadID, NULL, permutation, &encryptDat.srcDat);
+		pthread_join	( threadID, NULL);
 
-		if (pthread_join(threadID, NULL))
-		{
-			perror(NULL);
-			return errno;
-		}
-
-		srcDat.inf = srcDat.supr;
-		srcDat.supr = srcDat.inf + wordsThreads[i + 1];
+		encryptDat.srcDat.inf	= encryptDat.srcDat.supr;
+		encryptDat.srcDat.supr	= encryptDat.srcDat.inf + wordsThreads[i + 1];
 	}
 
 	return 1;
 }
 
+int decrypt(char src[], char srcPerm[], char dst[], int nrThreads)
+{
+	struct stat src_struct,
+				srcPerm_struct,
+				dst_struct;
+	struct data srcDat, srcPermDat;
+	struct decrypt decryptDat;
+
+	int fd_src,
+		fd_srcPerm,
+		fd_dst;
+	int *wordThreads = (int *)malloc(nrThreads * sizeof(int));
+
+	pthread_t threadID;
+
+	fd_src		= openSrc(src);
+	fd_srcPerm	= openSrc(srcPerm);
+
+	stat(src	, &src_struct);
+	stat(srcPerm, &srcPerm_struct);
+	stat(dst	, &dst_struct);
+
+	char src_rawDat[src_struct.st_size];
+	char srcPerm_rawDat[srcPerm_struct.st_size];
+
+	char *src_ptr		= mapping(fd_src, src_struct.st_size);
+	char *srcPerm_ptr	= mapping(fd_srcPerm, srcPerm_struct.st_size);
+
+	// srcPerm_ptr = trimWhitespace(srcPerm_rawDat);
+	strcpy(src_rawDat	 , src_ptr);
+	strcpy(srcPerm_rawDat, srcPerm_ptr);
+
+	srcDat		= allocateDat(src_rawDat);
+	srcPermDat	= allocateDat(srcPerm_rawDat);
+	wordThreads	= threadDivider(decryptDat.srcDat.wordsCount, nrThreads);
+
+	decryptDat.srcDat		= srcDat;
+	decryptDat.srcPermDat	= srcPermDat;
+
+	decryptDat.srcDat.inf	= 0;
+	decryptDat.srcDat.supr	= wordThreads[0];
+	printf("inainte de thread\n");
+
+	for (int i = 0; i < nrThreads; i++)
+	{
+		pthread_create	(&threadID, NULL, unlock, &decryptDat);
+		pthread_join	( threadID, NULL);
+
+		decryptDat.srcDat.inf	= decryptDat.srcDat.supr;
+		decryptDat.srcDat.supr	= decryptDat.srcDat.inf + wordThreads[i + 1];
+	}
+
+	return 1;
+}
 
 int main(int argc, char *argv[])
 {
-	encrypt("in/test.txt", "out/iesire1.txt", "out/iesire2.txt", 3);
+	if (argc != 2)
+	{
+		printf("ERROR\nWrong Command\nCommand usage: ./exec <encrypt> / <decrypt>\n");
+
+		return -1;
+	}
+
+	if (strcmp(argv[1], "encrypt") == 0)
+	{
+		char *src = "encrypt/src";
+		char *dst = "encrypt/dst";
+		char *dstPerm = "encrypt/dstPerm";
+
+		encrypt(src, dst, dstPerm, 3);
+	}
+
+	else if (strcmp(argv[1], "decrypt") == 0)
+	{
+		printf("decrypt\n");
+
+		char *src = "decrypt/src";
+		char *srcPerm = "decrypt/srcPerm";
+		char *dst = "decrypt/dst";
+
+		decrypt(src, srcPerm, dst, 3);
+	}
+
+	else
+	{
+		fprintf(stderr, "ERROR\nWrong Command\nCommand usage: ./exec <encrypt> / <decrypt>\n");
+	}
 
 	return 0;
 }
